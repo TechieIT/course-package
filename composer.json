@@ -1,5 +1,6 @@
 {
     "name": "techie/course-module",
+    "version": "1.0.0",
     "description": "Course, Form and FormAttribute plugin for TBC CMS",
     "type": "library",
     "license": "MIT",

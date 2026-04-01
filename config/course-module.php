@@ -1,7 +1,7 @@
 <?php
 
 return [
-    'table_prefix' => '',
+    'table_prefix' => 'techie_',
     'thumbnail_disk' => 'public',
     'thumbnail_path' => 'courses/thumbnails',
     'middleware' => ['web', 'auth'],
