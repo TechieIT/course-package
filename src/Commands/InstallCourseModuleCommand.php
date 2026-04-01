@@ -39,6 +39,7 @@ class InstallCourseModuleCommand extends Command
         $this->call('db:seed', [
             '--class' => CourseModulePermissionSeeder::class,
         ]);
+        $this->call('permission:cache-reset');
 
         if (! $this->option('skip-menu')) {
             $this->integrateSidebarMenu();
