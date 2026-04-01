@@ -15,7 +15,7 @@
             ],
             "aliases": {
                 "CourseModule": "Techie\\CourseModule\\Facades\\CourseModuleFacade"
-            ]
+            }
         }
     },
     "require": {
