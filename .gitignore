@@ -1,0 +1,8 @@
+/vendor
+/composer.lock
+/.idea
+/.vscode
+/.phpunit.cache
+/.DS_Store
+/node_modules
+/storage/*.key

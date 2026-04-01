@@ -1,0 +1,25 @@
+{
+    "name": "techie/course-module",
+    "description": "Course, Form and FormAttribute plugin for TBC CMS",
+    "type": "library",
+    "license": "MIT",
+    "autoload": {
+        "psr-4": {
+            "Techie\\CourseModule\\": "src/"
+        }
+    },
+    "extra": {
+        "laravel": {
+            "providers": [
+                "Techie\\CourseModule\\CourseModuleServiceProvider"
+            ],
+            "aliases": {
+                "CourseModule": "Techie\\CourseModule\\Facades\\CourseModuleFacade"
+            ]
+        }
+    },
+    "require": {
+        "php": "^8.2",
+        "illuminate/support": "^11.0||^12.0||^13.0"
+    }
+}
