@@ -24,7 +24,6 @@ class CourseModuleServiceProvider extends ServiceProvider
         $this->loadMigrationsFrom(__DIR__ . '/../database/migrations');
 
         Route::middleware(config('course-module.middleware', ['web', 'auth']))
-            ->prefix('course-module')
             ->as('course-module.')
             ->group(__DIR__ . '/../routes/web.php');
 
