@@ -78,13 +78,22 @@ class InstallCourseModuleCommand extends Command
 
 BLADE;
 
-        if (! str_contains($sidebarContent, $insertBefore)) {
+        $normalized = str_replace("\r\n", "\n", $sidebarContent);
+        $needle = str_replace("\r\n", "\n", $insertBefore);
+
+        if (! str_contains($normalized, $needle)) {
             $this->warn('Sidebar anchor block not found. Skipping sidebar integration.');
             return;
         }
 
-        $updatedContent = str_replace($insertBefore, $menuBlock . $insertBefore, $sidebarContent);
-        File::put($sidebarPath, $updatedContent);
+        $count = 0;
+        $updatedContent = str_replace($needle, $menuBlock . $needle, $normalized, $count);
+        if ($count === 0) {
+            $this->warn('Sidebar injection failed (no replacement).');
+            return;
+        }
+
+        File::put($sidebarPath, str_replace("\n", PHP_EOL, $updatedContent));
 
         $this->info('Course Module sidebar menu injected.');
     }

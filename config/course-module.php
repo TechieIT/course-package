@@ -7,5 +7,6 @@ return [
     'middleware' => ['web', 'auth'],
     'route_prefix' => 'admin',
     'use_cms_layout' => true,
-    'layout' => 'layouts.app',
+    // Render course-module pages inside the main CMS admin layout
+    'layout' => 'layouts.admin',
 ];
