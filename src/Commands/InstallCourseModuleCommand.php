@@ -8,9 +8,12 @@ use Techie\CourseModule\Database\Seeders\CourseModulePermissionSeeder;
 
 class InstallCourseModuleCommand extends Command
 {
-    protected $signature = 'course-module:install {--force : Overwrite published files} {--skip-menu : Skip admin sidebar integration}';
+    protected $signature = 'course-module:install
+                            {--force : Overwrite published files}
+                            {--skip-menu : Do not try to inject the sidebar include into the CMS layout}
+                            {--skip-seed : Skip permission seeder}';
 
-    protected $description = 'Install the Course Module package.';
+    protected $description = 'Publish assets, migrate, seed permissions, and optionally wire the CMS sidebar.';
 
     public function handle(): int
     {
@@ -35,13 +38,23 @@ class InstallCourseModuleCommand extends Command
         $this->info('Running migrations...');
         $this->call('migrate');
 
-        $this->info('Seeding course module permissions...');
-        $this->call('db:seed', [
-            '--class' => CourseModulePermissionSeeder::class,
-        ]);
-        $this->call('permission:cache-reset');
+        if (! $this->option('skip-seed')) {
+            $this->info('Seeding course module permissions...');
+            $this->call('db:seed', [
+                '--class' => CourseModulePermissionSeeder::class,
+            ]);
+            if (class_exists(\Spatie\Permission\PermissionServiceProvider::class)) {
+                $this->call('permission:cache-reset');
+            }
+        }
 
-        if (! $this->option('skip-menu')) {
+        $include = (string) config('course-module.cms.sidebar_include', 'course-module::cms.sidebar');
+        $this->newLine();
+        $this->comment('CMS wiring (recommended): add this line once in your admin sidebar layout:');
+        $this->line("    @include('{$include}')");
+        $this->newLine();
+
+        if (! $this->option('skip-menu') && config('course-module.cms.install.inject_sidebar', true)) {
             $this->integrateSidebarMenu();
         }
 
@@ -52,49 +65,52 @@ class InstallCourseModuleCommand extends Command
 
     private function integrateSidebarMenu(): void
     {
-        $sidebarPath = base_path('resources/views/admin/includes/header.blade.php');
+        $relative = (string) config('course-module.cms.install.sidebar_file', 'resources/views/admin/includes/header.blade.php');
+        $sidebarPath = base_path($relative);
 
         if (! File::exists($sidebarPath)) {
-            $this->warn('Sidebar file not found. Skipping sidebar integration.');
+            $this->warn("Sidebar file not found at [{$relative}]. Add the @include line manually (see above).");
+
             return;
         }
+
+        $include = (string) config('course-module.cms.sidebar_include', 'course-module::cms.sidebar');
+        $marker = "@include('{$include}')";
 
         $sidebarContent = File::get($sidebarPath);
-        $marker = "@canany(['view-courses', 'view-course_forms', 'view-form_attributes'])";
 
         if (str_contains($sidebarContent, $marker)) {
-            $this->info('Sidebar integration already exists.');
+            $this->info('Sidebar include already present.');
+
             return;
         }
 
-        $insertBefore = "                        @canany(['view-users', 'view-roles', 'view-team_members', 'view-member_departments'])";
-        $menuBlock = <<<'BLADE'
-                        @canany(['view-courses', 'view-course_forms', 'view-form_attributes'])
-                            <li class="nav-label">Course Module</li>
-                            @include('components.admin.menus.menu-item', ['route' => route('course-module.courses.index'), 'title' => 'Courses', 'icon' => 'fad fa-graduation-cap', 'permission' => 'view-courses', 'active' => request()->routeIs('course-module.courses.*')])
-                            @include('components.admin.menus.menu-item', ['route' => route('course-module.forms.index'), 'title' => 'Course Forms', 'icon' => 'fad fa-file-contract', 'permission' => 'view-course_forms', 'active' => request()->routeIs('course-module.forms.*')])
-                            @include('components.admin.menus.menu-item', ['route' => route('course-module.form-attributes.index'), 'title' => 'Form Attributes', 'icon' => 'fad fa-list-ol', 'permission' => 'view-form_attributes', 'active' => request()->routeIs('course-module.form-attributes.*')])
-                        @endcanany
+        $insertBefore = (string) config(
+            'course-module.cms.install.insert_before_needle',
+            "                        @canany(['view-users', 'view-roles', 'view-team_members', 'view-member_departments'])"
+        );
 
-BLADE;
+        $menuBlock = '                        ' . $marker . "\n\n";
 
         $normalized = str_replace("\r\n", "\n", $sidebarContent);
         $needle = str_replace("\r\n", "\n", $insertBefore);
 
         if (! str_contains($normalized, $needle)) {
-            $this->warn('Sidebar anchor block not found. Skipping sidebar integration.');
+            $this->warn('Sidebar anchor block not found in your layout. Add the @include line manually (see above).');
+
             return;
         }
 
         $count = 0;
         $updatedContent = str_replace($needle, $menuBlock . $needle, $normalized, $count);
         if ($count === 0) {
-            $this->warn('Sidebar injection failed (no replacement).');
+            $this->warn('Sidebar injection failed. Add the @include line manually (see above).');
+
             return;
         }
 
         File::put($sidebarPath, str_replace("\n", PHP_EOL, $updatedContent));
 
-        $this->info('Course Module sidebar menu injected.');
+        $this->info('Sidebar include injected into ' . $relative . '.');
     }
 }

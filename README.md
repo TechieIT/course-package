@@ -1,37 +1,31 @@
 # Techie Course Module
 
-`techie/course-module` is a reusable Laravel package that adds Course, Form, and FormAttribute management to any Laravel CMS.
+`techie/course-module` is a Laravel package that adds Course, Form, and FormAttribute management. Your **CMS application code stays the same** across projects; you turn the course module on by adding this package with Composer (path repo while developing, or a Git URL for production).
 
 Compatible with Laravel `11`, `12`, and `13`.
+
+## How it fits your CMS
+
+- **Core CMS**: one shared codebase; no course-specific forks.
+- **Course feature**: pulled in as a dependency (`techie/course-module`) from Git or a local path.
+- **Wiring**: publish config/migrations, run install, add **one** `@include` in your admin sidebar (or let `course-module:install` inject it if your layout matches the defaults).
 
 ## Features
 
 - Course CRUD with soft-deletes, status enum, thumbnail upload
 - Form CRUD with course linkage
 - Form attribute builder with sortable order
-- Route + view + migration auto-loading through package service provider
-- Publishable config/views/migrations
-- Facade API: `CourseModule::allPublished()`
-- Install command: `php artisan course-module:install`
-- Plugin metadata contract for plugin dashboard integration
+- Routes, views, and migrations loaded by the service provider
+- Optional `enabled` config / `COURSE_MODULE_ENABLED` to disable HTTP routes without removing the package
+- Facade: `CourseModule::allPublished()` and `CourseModule::manifest()` for CMS/plugin dashboards
+- `php artisan course-module:install` — publish, migrate, seed permissions (Spatie), optional sidebar injection
+- `CmsModule` contract: metadata, permission list, and sidebar view name for integrations
 
-## Package Structure
+## Installation in a CMS project
 
-```text
-packages/techie/course-module
-```
+### 1) Path repository (local / monorepo dev)
 
-Main namespace:
-
-```php
-Techie\CourseModule\
-```
-
-## Installation in CMS
-
-From your CMS project (`C:\laragon\www\CMS`):
-
-### 1) Add path repository in `composer.json`
+In the CMS `composer.json`:
 
 ```json
 {
@@ -39,71 +33,62 @@ From your CMS project (`C:\laragon\www\CMS`):
     {
       "type": "path",
       "url": "packages/techie/course-module",
-      "options": {
-        "symlink": true
-      }
+      "options": { "symlink": true }
     }
   ]
 }
 ```
 
-### 2) Require package
+### 2) Require the package
 
 ```bash
 composer require techie/course-module:*
 ```
 
-### 3) Publish package files
-
-```bash
-php artisan vendor:publish --tag=course-module-config
-php artisan vendor:publish --tag=course-module-views
-php artisan vendor:publish --tag=course-module-migrations
-```
-
-### 4) Migrate
-
-```bash
-php artisan migrate
-```
-
-### 5) Optional: one-step install
+### 3) One-step install (recommended)
 
 ```bash
 php artisan course-module:install
 ```
 
-### 6) Verify routes
+Or publish manually, then migrate — see `course-module:install` source for tags.
 
-```bash
-php artisan route:list --path=courses
+### 4) Wire the admin menu (recommended)
+
+**Option A — manual (most stable):** in your CMS admin sidebar Blade file, add:
+
+```blade
+@include('course-module::cms.sidebar')
 ```
 
-## Route Map
+**Option B — automatic:** run `course-module:install` without `--skip-menu`. The command tries to inject that include before a configurable anchor in `config/course-module.php` (`cms.install.*`). Adjust `sidebar_file` and `insert_before_needle` if your paths differ.
 
-Routes are loaded by the provider with package prefix `course-module`, plus the internal admin prefix from config (`admin` by default), so effective paths look like:
+### 5) Verify routes
 
-- `/course-module/admin/courses`
-- `/course-module/admin/forms`
-- `/course-module/admin/form-attributes`
+```bash
+php artisan route:list --name=course-module
+```
 
-Route names are prefixed with `course-module.`:
+## Route map
 
-- `course-module.courses.index`
-- `course-module.forms.index`
-- `course-module.form-attributes.index`
+Route **names** use the `course-module.` prefix (e.g. `course-module.courses.index`).  
+URLs use your `route_prefix` (default `admin`), for example:
+
+- `/admin/courses`
+- `/admin/forms`
+- `/admin/form-attributes`
 
 ## Config
 
 Published file: `config/course-module.php`
 
-- `table_prefix`: Prefix for package tables
-- `thumbnail_disk`: Filesystem disk for course thumbnails
-- `thumbnail_path`: Folder path for thumbnails
-- `middleware`: Middleware stack for package routes
-- `route_prefix`: Inner route prefix (default `admin`)
-- `use_cms_layout`: Use host app layout or package fallback
-- `layout`: Host layout when `use_cms_layout=true`
+- `enabled` / `COURSE_MODULE_ENABLED`: disable package routes without uninstalling
+- `version`: optional fallback if Composer’s installed version is unavailable
+- `table_prefix`, `thumbnail_disk`, `thumbnail_path`
+- `middleware`, `route_prefix`
+- `use_cms_layout`, `layout` — render package views inside your CMS layout
+- `cms.sidebar_include` — view passed to `@include(...)` in your sidebar
+- `cms.install.*` — paths and anchor for optional sidebar injection during install
 
 ## Facade
 
@@ -111,62 +96,29 @@ Published file: `config/course-module.php`
 use CourseModule;
 
 $courses = CourseModule::allPublished();
+$module = CourseModule::manifest(); // Techie\CourseModule\Contracts\CmsModule
 ```
 
-## Plugin Info Contract
+## Contracts
 
-Interface:
+**Plugin metadata** — `Techie\CourseModule\Contracts\PluginInfo`
+
+**Full CMS integration surface** — `Techie\CourseModule\Contracts\CmsModule` (extends `PluginInfo`)
+
+Default implementation: `Techie\CourseModule\Support\CourseModulePluginInfo`
 
 ```php
-Techie\CourseModule\Contracts\PluginInfo
+$module = app(\Techie\CourseModule\Contracts\CmsModule::class);
+
+$module->name();
+$module->version(); // from Composer when installed as a package
+$module->sidebarBlade();   // 'course-module::cms.sidebar'
+$module->permissionNames();
 ```
 
-Default implementation:
+## Git workflow for the package
 
-```php
-Techie\CourseModule\Support\CourseModulePluginInfo
-```
-
-Example usage:
-
-```php
-$info = app(\Techie\CourseModule\Contracts\PluginInfo::class);
-
-$info->name();
-$info->version();
-$info->author();
-$info->description();
-```
-
-## Git Setup for Standalone Package
-
-Inside package folder:
-
-```bash
-cd C:\laragon\www\CMS\packages\techie\course-module
-git init
-git add .
-git commit -m "Initial commit: techie course module package"
-```
-
-Create private GitHub repo and push:
-
-```bash
-git branch -M main
-git remote add origin https://github.com/<org-or-user>/course-module.git
-git push -u origin main
-```
-
-Tag first release:
-
-```bash
-git tag v1.0.0
-git push origin v1.0.0
-```
-
-## Using via VCS in Future Projects
-
-Add to target project `composer.json`:
+Keep this repository as its own Git project. In each client or project CMS, add it as a Composer **VCS** repository:
 
 ```json
 {
@@ -179,18 +131,18 @@ Add to target project `composer.json`:
 }
 ```
 
-Install specific version:
-
 ```bash
 composer require techie/course-module:^1.0
 ```
 
-## Development Notes
+Tag releases (e.g. `v1.0.0`) so projects can pin versions while the CMS core stays unchanged.
 
-- Package models use configurable table prefix via `config('course-module.table_prefix')`
-- `Course` and `Form` support soft deletes
-- Form attribute reorder endpoint:
-  `POST course-module.form-attributes.reorder`
+## Development notes
+
+- Models use `config('course-module.table_prefix')`
+- `Course` and `Form` use soft deletes
+- Form attribute reorder: `POST` route `course-module.form-attributes.reorder`
+- Permission seeding expects `spatie/laravel-permission` (see `composer.json` `suggest`)
 
 ## License
 

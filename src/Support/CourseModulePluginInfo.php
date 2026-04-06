@@ -2,9 +2,10 @@
 
 namespace Techie\CourseModule\Support;
 
-use Techie\CourseModule\Contracts\PluginInfo;
+use Composer\InstalledVersions;
+use Techie\CourseModule\Contracts\CmsModule;
 
-class CourseModulePluginInfo implements PluginInfo
+class CourseModulePluginInfo implements CmsModule
 {
     public function name(): string
     {
@@ -13,7 +14,9 @@ class CourseModulePluginInfo implements PluginInfo
 
     public function version(): string
     {
-        return '1.0.0';
+        $fromComposer = InstalledVersions::getPrettyVersion('techie/course-module');
+
+        return $fromComposer ?? (string) config('course-module.version', 'dev');
     }
 
     public function author(): string
@@ -23,6 +26,31 @@ class CourseModulePluginInfo implements PluginInfo
 
     public function description(): string
     {
-        return 'Course, Form and FormAttribute plugin for TBC CMS.';
+        return 'Courses, forms, and form attributes for your CMS — install via Composer without changing core CMS code.';
+    }
+
+    public function composerPackageName(): string
+    {
+        return 'techie/course-module';
+    }
+
+    public function routeNamePrefix(): string
+    {
+        return 'course-module.';
+    }
+
+    public function sidebarBlade(): string
+    {
+        return 'course-module::cms.sidebar';
+    }
+
+    public function permissionNames(): array
+    {
+        return CourseModulePermissions::all();
+    }
+
+    public function permissionGroups(): array
+    {
+        return CourseModulePermissions::groups();
     }
 }

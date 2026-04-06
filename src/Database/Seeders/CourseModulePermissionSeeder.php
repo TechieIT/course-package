@@ -6,6 +6,7 @@ use Illuminate\Database\Seeder;
 use Spatie\Permission\Models\Permission;
 use Spatie\Permission\Models\Role;
 use Spatie\Permission\PermissionRegistrar;
+use Techie\CourseModule\Support\CourseModulePermissions;
 
 class CourseModulePermissionSeeder extends Seeder
 {
@@ -13,32 +14,20 @@ class CourseModulePermissionSeeder extends Seeder
     {
         app(PermissionRegistrar::class)->forgetCachedPermissions();
 
-        $slugs = [
-            'courses',
-            'course_forms',
-            'form_attributes',
-        ];
-
-        $crudList = [
-            'view',
-            'create',
-            'update',
-            'delete',
-        ];
-
+        $groups = CourseModulePermissions::groups();
         $createdPermissions = [];
 
-        foreach ($slugs as $slug) {
-            foreach ($crudList as $crud) {
+        foreach ($groups as $label => $names) {
+            foreach ($names as $name) {
                 $permission = Permission::query()->firstOrCreate(
                     [
-                        'name' => $crud . '-' . $slug,
+                        'name' => $name,
                         'guard_name' => 'web',
                     ],
                     [
-                        'name' => $crud . '-' . $slug,
+                        'name' => $name,
                         'guard_name' => 'web',
-                        'group' => ucfirst(str_replace('_', ' ', $slug)),
+                        'group' => $label,
                     ]
                 );
 
